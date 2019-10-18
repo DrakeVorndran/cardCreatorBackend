@@ -4,7 +4,9 @@ const Schema = mongoose.Schema
 const lobbySchema = new Schema({
   players: [],
   messages: [],
-  roomID: String,
+  deck: [],
+  roomId: String,
+  owner: String,
 })
 
-module.exports = mongoose.model('User', userSchema)
+module.exports = mongoose.model('Lobby', lobbySchema)
