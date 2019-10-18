@@ -5,6 +5,7 @@ const lobbySchema = new Schema({
   players: [],
   messages: [],
   deck: [],
+  discard: [],
   roomId: String,
   owner: String,
 })

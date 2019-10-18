@@ -41,6 +41,7 @@ io.on("connection", socket => {
     room.owner = user
     room.roomId = lobby
     room.players = []
+    room.discard = []
     room.deck = shuffle(deck)
     room.markModified('cards')
     room.save()
@@ -50,27 +51,46 @@ io.on("connection", socket => {
     socket.join(roomId)
     Lobby.findOne({ roomId }).then(lobby => {
       oldUser = lobby.players.reduce((reducer, player) => player._id === userData._id ? player : reducer, {})
-      console.log(!oldUser._id)
       if (!oldUser._id) {
-        console.log("adding user")
         lobby.players.push(user)
         lobby.markModified('users')
+        socket.emit('card drawn', user.cards)
         lobby.save()
       }
+      else {
+        socket.emit('card drawn', oldUser.cards)
+
+      }
+      io.to(roomId).emit('add player', lobby.players)
+      io.to(roomId).emit('update discard', lobby.discard)
     })
   })
 
   socket.on('draw card', (roomId, userData) => {
-    console.log('drawing card')
     lobby = Lobby.findOne({ roomId }).then(lobby => {
       user = lobby.players.reduce((reducer, player) => player._id === userData._id ? player : reducer, {})
       user.cards.push(lobby.deck.pop())
-      console.log(user.cards)
       lobby.markModified('players')
       lobby.markModified('deck')
       lobby.save().then(lobby => {
-        io.to(roomId).emit('card drawn', user.cards)
+        socket.emit('card drawn', user.cards)
       })
+
+    })
+  })
+
+  socket.on('play card', (roomId, userData, playedCard) => {
+    lobby = Lobby.findOne({ roomId }).then(lobby => {
+      const user = lobby.players.reduce((reducer, player) => player._id === userData._id ? player : reducer, {})
+      const { card, cardIndex } = user.cards.reduce((reducer, card, cardIndex) => card.value === playedCard.value ? { cardIndex, card } : reducer, {})
+      console.log(card)
+      lobby.discard.unshift(card)
+      user.cards.splice(cardIndex, 1)
+      lobby.markModified('players')
+      lobby.markModified('discard')
+      io.to(roomId).emit('update discard', lobby.discard)
+      socket.emit('card drawn', user.cards)
+      lobby.save()
 
     })
   })
